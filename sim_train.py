@@ -26,6 +26,9 @@ from benchmarl.environments import VmasTask
 from benchmarl.utils import DEVICE_TYPING
 from torchrl.envs import EnvBase, VmasEnv
 
+'''
+This class is our custom environment that is used to freeze agents
+'''
 class CustomVmasEnv(VmasEnv):
     def __init__(self, *args, scenario: BaseScenario, **kwargs):
         super().__init__(*args, scenario=scenario, **kwargs)
@@ -46,6 +49,9 @@ class CustomVmasEnv(VmasEnv):
                 actions[self.frozen_agent][env_idx] = torch.zeros_like(actions[self.frozen_agent][env_idx])
         return actions
 
+'''
+This class is our custom scenario that is altered to freeze agents
+'''
 class MyScenario(BaseScenario):
 
     def make_world(self, batch_dim: int, device: torch.device, **kwargs):
@@ -333,6 +339,10 @@ class MyScenario(BaseScenario):
         if self.frozen_agent is not None and agent == self.world.agents[self.frozen_agent]:
             agent.action.u = torch.zeros_like(agent.action.u)
         return
+
+'''
+Everything below this line is training the model
+'''
 
 def get_env_fun(
     self,
