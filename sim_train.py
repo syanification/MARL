@@ -26,9 +26,6 @@ from benchmarl.environments import VmasTask
 from benchmarl.utils import DEVICE_TYPING
 from torchrl.envs import EnvBase, VmasEnv
 
-display = pyvirtualdisplay.Display(visible=False, size=(1400, 900))
-display.start()
-
 class CustomVmasEnv(VmasEnv):
     def __init__(self, *args, scenario: BaseScenario, **kwargs):
         super().__init__(*args, scenario=scenario, **kwargs)
@@ -337,123 +334,6 @@ class MyScenario(BaseScenario):
             agent.action.u = torch.zeros_like(agent.action.u)
         return
 
-env = make_env(
-    scenario = MyScenario(),
-    num_envs = 8,
-    device = "cuda",
-    seed = 0,
-
-    #Optional:
-    continuous_actions = False,
-    max_steps = 100,
-
-    #Env Specific
-    n_agents = 4,
-    package_mass = 5
-)
-
-actions = env.get_random_actions()
-# print(actions)
-
-obs, rews, dones, info = env.step(actions)
-
-# print(f"Obs length: {len(obs)}, observation of agent 0:\n{obs[0]}")
-# print(f"Rewards length: {len(rews)}, reward of agent 0:\n{rews[0]}")
-# print(dones)
-
-
-def use_vmas_env(
-    render: bool,
-    num_envs: int,
-    n_steps: int,
-    device: str,
-    scenario: Union[str, BaseScenario],
-    continuous_actions: bool,
-    **kwargs
-):
-    """Example function to use a vmas environme
-    This is a simplification of the function in `vmas.examples.use_vmas_env.py`.
-nt.
-
-    This is a simplification of the function in `vmas.examples.use_vmas_env.py`.
-
-    Args:
-        continuous_actions (bool): Whether the agents have continuous or discrete actions
-        scenario (str, BaseScenario): Name of scenario or scenario class
-        device (str): Torch device to use
-        render (bool): Whether to render the scenario
-        num_envs (int): Number of vectorized environments
-        n_steps (int): Number of steps before returning done
-
-    """
-
-    scenario_name = scenario if isinstance(scenario, str) else scenario.__class__.__name__
-
-    env = make_env(
-        scenario=scenario,
-        num_envs=num_envs,
-        device=device,
-        continuous_actions=continuous_actions,
-        seed=0,
-        # Environment specific variables
-        **kwargs
-    )
-
-    frame_list = []  # For creating a gif
-    init_time = time.time()
-    step = 0
-
-    for s in range(n_steps):
-        step += 1
-        print(f"Step {step}")
-        scenario.step()
-
-        actions = []
-        for i, agent in enumerate(env.agents):
-            # Get the agent's action
-            action = env.get_random_action(agent)
-
-            # Override the action if the agent is frozen
-            action = scenario.override_action(agent, action)
-
-            actions.append(action)
-
-        # Step the environment
-        obs, rews, dones, info = env.step(actions)
-
-        # Render if required
-        if render:
-            frame = env.render(mode="rgb_array")
-            frame_list.append(frame)
-
-    total_time = time.time() - init_time
-    print(
-        f"It took: {total_time}s for {n_steps} steps of {num_envs} parallel environments on device {device} "
-        f"for {scenario_name} scenario."
-    )
-
-    if render:
-        from moviepy import ImageSequenceClip
-        fps=30
-        clip = ImageSequenceClip(frame_list, fps=fps)
-        clip.write_gif(f'{scenario_name}.gif', fps=fps)
-
-'''
-use_vmas_env(
-    render=True,
-    num_envs=8,
-    n_steps=250,
-    device="cuda",
-    scenario=MyScenario(),
-    continuous_actions=True,
-    # Scenario kwargs
-    n_agents=4,
-    k=50
-)
-
-Image(f'{MyScenario.__name__}.gif')
-'''
-
 def get_env_fun(
     self,
     num_envs: int,
@@ -509,7 +389,7 @@ experiment_config.render = True
 experiment_config.share_policy_params = True # Policy parameter sharing on
 experiment_config.evaluation_interval = 120_000 # Interval in terms of frames, will evaluate every 120_000 / 60_000 = 2 iterations
 experiment_config.evaluation_episodes = 200 # Number of vmas vectorized enviornemnts used in evaluation
-experiment_config.loggers = ["wandb"] # Log to csv, usually you should use wandb
+experiment_config.loggers = ["csv"] # Log to csv, usually you should use wandb
 
 # Loads from "benchmarl/conf/task/vmas/balance.yaml"
 task = VmasTask.BALANCE.get_from_yaml()
@@ -573,8 +453,5 @@ experiment = Experiment(
     config=experiment_config,
 )
 experiment.run()
-
-from torchrl.envs import VmasEnv
-
 
 
