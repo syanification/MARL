@@ -129,6 +129,36 @@ class MyScenario(BaseScenario):
 
         return world
 
+    # def step(self):
+    #     print("scenario.step() called")  # Debug print
+    #     # Randomly select an agent to freeze if no agent is currently frozen
+    #     if self.frozen_agent is None and torch.randint(0, 3, (1,)).item() == 0:  # Random interval
+    #         self.frozen_agent = torch.randint(0, self.n_agents, (1,)).item()
+    #         self.freeze_counter = self.k
+
+    #         # Change the color of the frozen agent to cyan
+    #         frozen_agent = self.world.agents[self.frozen_agent]
+    #         self.original_color = frozen_agent.color  # Save the original color
+    #         frozen_agent.color = Color.BLUE
+
+    #     # Decrease freeze counter and unfreeze the agent if the counter reaches 0
+    #     if self.frozen_agent is not None:
+    #         print(f"Agent {self.frozen_agent} frozen for {self.freeze_counter} steps")
+    #         self.freeze_counter -= 1
+    #         if self.freeze_counter <= 0:
+    #             # Revert the color of the agent back to its original color
+    #             frozen_agent = self.world.agents[self.frozen_agent]
+    #             frozen_agent.color = self.original_color
+    #             self.frozen_agent = None
+
+    # def override_action(self, agent: Agent, action: torch.Tensor) -> torch.Tensor:
+    #     # Override the action of the frozen agent with a "zero-acceleration" action
+    #     if self.frozen_agent is not None:
+    #         print(f"override_action called for agent {agent.name}, frozen agent: {self.frozen_agent}")
+    #         if agent == self.world.agents[self.frozen_agent]:
+    #             return torch.zeros_like(action)  # Zero-acceleration action
+    #     return action
+
     def reset_world_at(self, env_index: int = None):
         goal_pos = torch.cat(
             [
@@ -262,8 +292,8 @@ class MyScenario(BaseScenario):
             )
 
     def observation(self, agent: Agent):
-        # get positions of all entities in this agent's reference frame
-        return torch.cat(
+        # Get positions of all entities in this agent's reference frame
+        base_observation = torch.cat(
             [
                 agent.state.pos,
                 agent.state.vel,
@@ -277,6 +307,24 @@ class MyScenario(BaseScenario):
             ],
             dim=-1,
         )
+
+        # Collect positions and velocities of all agents
+        all_positions = torch.stack([a.state.pos for a in self.world.agents], dim=0)
+        all_velocities = torch.stack([a.state.vel for a in self.world.agents], dim=0)
+
+        # Compute mean and variance for positions and velocities
+        mean_position = torch.mean(all_positions, dim=0)
+        variance_position = torch.var(all_positions, dim=0)
+        mean_velocity = torch.mean(all_velocities, dim=0)
+        variance_velocity = torch.var(all_velocities, dim=0)
+
+        # Concatenate the mean and variance to the observation
+        extended_observation = torch.cat(
+            [base_observation, mean_position, variance_position, mean_velocity, variance_velocity],
+            dim=-1,
+        )
+
+        return extended_observation
 
     def reward(self, agent: Agent):
         is_first = agent == self.world.agents[0]
